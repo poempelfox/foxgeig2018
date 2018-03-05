@@ -51,17 +51,15 @@ static CDC_LineEncoding_t LineEncoding = { .BaudRateBPS = 0,
 /** Main program entry point. This routine contains the overall program flow, including initial
  *  setup of all components and the main program loop.
  */
-int main(void)
+void console_init(void)
 {
 	USB_Init();
+}
 
-	GlobalInterruptEnable();
 
-	for (;;)
-	{
-		CDC_Task();
-		USB_USBTask();
-	}
+void console_work(void)
+{
+	CDC_Task();
 }
 
 /** Event handler for the USB_Connect event. This indicates that the device is enumerating via the status LEDs and
@@ -146,51 +144,49 @@ void EVENT_USB_Device_ControlRequest(void)
 /** Function to manage CDC data transmission and reception to and from the host. */
 void CDC_Task(void)
 {
-	char*       ReportString    = NULL;
-	static bool ActionSent      = false;
+  char prbuf[100];
 
-	/* Device must be connected and configured for the task to run */
-	if (USB_DeviceState != DEVICE_STATE_Configured)
-	  return;
+  /* Device must be connected and configured for the task to run */
+  if (USB_DeviceState != DEVICE_STATE_Configured)
+    return;
 
-	/* Determine if a joystick action has occurred */
-	ReportString = "Just testing\r\n";
-	/* else 	  ActionSent = false; */
+  /* Select the Serial Rx Endpoint */
+  Endpoint_SelectEndpoint(CDC_RX_EPADDR);
 
-	/* Flag management - Only allow one string to be sent per action */
-	if ((ReportString != NULL) && (ActionSent == false) && LineEncoding.BaudRateBPS)
-	{
-		ActionSent = true;
+  /* Throw away any received data from the host */
+  if (Endpoint_IsOUTReceived()) {
+    uint8_t errorcode;
+    uint8_t inp[2];
+    errorcode = Endpoint_Read_Stream_LE(inp, 1, NULL);
+    if (errorcode != ENDPOINT_RWSTREAM_NoError) {
+      return;
+    }
+    
+    /* Select the Serial Tx Endpoint */
+    Endpoint_SelectEndpoint(CDC_TX_EPADDR);
+    sprintf(prbuf, "Received: %c\n", inp[0]);
+    Endpoint_Write_Stream_LE(prbuf, strlen(prbuf), NULL);
+    Endpoint_ClearIN();
+  }
 
-		/* Select the Serial Tx Endpoint */
-		Endpoint_SelectEndpoint(CDC_TX_EPADDR);
+#if 0
+          /* Remember if the packet to send completely fills the endpoint */
+          bool IsFull = (Endpoint_BytesInEndpoint() == CDC_TXRX_EPSIZE);
 
-		/* Write the String to the Endpoint */
-		Endpoint_Write_Stream_LE(ReportString, strlen(ReportString), NULL);
+          /* Finalize the stream transfer to send the last packet */
+          Endpoint_ClearIN();
 
-		/* Remember if the packet to send completely fills the endpoint */
-		bool IsFull = (Endpoint_BytesInEndpoint() == CDC_TXRX_EPSIZE);
+          /* If the last packet filled the endpoint, send an empty packet to release the buffer on
+           * the receiver (otherwise all data will be cached until a non-full packet is received) */
+          if (IsFull)
+          {
+                  /* Wait until the endpoint is ready for another packet */
+                  Endpoint_WaitUntilReady();
 
-		/* Finalize the stream transfer to send the last packet */
-		Endpoint_ClearIN();
+                  /* Send an empty packet to ensure that the host does not buffer data sent to it */
+                  Endpoint_ClearIN();
+          }
+  }
+#endif
 
-		/* If the last packet filled the endpoint, send an empty packet to release the buffer on
-		 * the receiver (otherwise all data will be cached until a non-full packet is received) */
-		if (IsFull)
-		{
-			/* Wait until the endpoint is ready for another packet */
-			Endpoint_WaitUntilReady();
-
-			/* Send an empty packet to ensure that the host does not buffer data sent to it */
-			Endpoint_ClearIN();
-		}
-	}
-
-	/* Select the Serial Rx Endpoint */
-	Endpoint_SelectEndpoint(CDC_RX_EPADDR);
-
-	/* Throw away any received data from the host */
-	if (Endpoint_IsOUTReceived())
-	  Endpoint_ClearOUT();
 }
-

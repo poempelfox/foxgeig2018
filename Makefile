@@ -25,14 +25,13 @@ AVRDMCU	= m32u4
 # Clock Frequency of the AVR. Needed for various calculations.
 CPUFREQ		= 8000000UL
 
-# main.c temporaer raus fuer lufa/VirtualSerial.c
-SRCS	= eeprom.c lufa/LUFA/Drivers/USB/Core/USBTask.c lufa/LUFA/Drivers/USB/Core/AVR8/Endpoint_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/EndpointStream_AVR8.c lufa/LUFA/Drivers/USB/Core/Events.c lufa/LUFA/Drivers/USB/Core/DeviceStandardReq.c lufa/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c lufa/Descriptors.c lufa/console.c
+SRCS	= eeprom.c lufa/LUFA/Drivers/USB/Core/USBTask.c lufa/LUFA/Drivers/USB/Core/AVR8/Endpoint_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/EndpointStream_AVR8.c lufa/LUFA/Drivers/USB/Core/Events.c lufa/LUFA/Drivers/USB/Core/DeviceStandardReq.c lufa/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c lufa/Descriptors.c lufa/console.c main.c
 PROG	= foxgeig2018
 
 # compiler flags
 CFLAGS	= -g -Os -Wall -Wno-pointer-sign -std=c99 -mmcu=$(MCU) $(ADDDEFS)
 # FIXME
-CFLAGS +=  -DF_USB=8000000UL -DUSE_LUFA_CONFIG_HEADER -I./lufa
+CFLAGS +=  -DF_USB=8000000UL -DUSE_LUFA_CONFIG_HEADER -DINTERRUPT_CONTROL_ENDPOINT -I./lufa
 
 # linker flags
 LDFLAGS = -g -mmcu=$(MCU) -Wl,-Map,$(PROG).map -Wl,--gc-sections

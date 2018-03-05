@@ -28,32 +28,30 @@
   this software.
 */
 
-/** \file
- *
- *  Header file for VirtualSerial.c.
- */
-
 #ifndef _VIRTUALSERIAL_H_
 #define _VIRTUALSERIAL_H_
 
-	/* Includes: */
-		#include <avr/io.h>
-		#include <avr/wdt.h>
-		#include <avr/power.h>
-		#include <avr/interrupt.h>
-		#include <string.h>
+/* Includes: */
+#include <avr/io.h>
+#include <avr/wdt.h>
+#include <avr/power.h>
+#include <avr/interrupt.h>
+#include <string.h>
 
-		#include "Descriptors.h"
+#include "Descriptors.h"
 
-		#include <LUFA/Drivers/USB/USB.h>
+#include <LUFA/Drivers/USB/USB.h>
 
-	/* Function Prototypes: */
-		void CDC_Task(void);
+/* USB functions (not to be called by application) */
+void CDC_Task(void);
 
-		void EVENT_USB_Device_Connect(void);
-		void EVENT_USB_Device_Disconnect(void);
-		void EVENT_USB_Device_ConfigurationChanged(void);
-		void EVENT_USB_Device_ControlRequest(void);
+void EVENT_USB_Device_Connect(void);
+void EVENT_USB_Device_Disconnect(void);
+void EVENT_USB_Device_ConfigurationChanged(void);
+void EVENT_USB_Device_ControlRequest(void);
+
+void console_init(void);
+void console_work(void); /* FIXME we should use interrupts, not this mess */
 
 #endif
 
