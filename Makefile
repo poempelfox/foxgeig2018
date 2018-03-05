@@ -9,9 +9,11 @@ INCDIR	= .
 # There are a few additional defines that en- or disable certain features,
 # mainly to save space in case you are running out of flash.
 # You can add them here.
-#  -DSWSERIALO      enable software (bitbanging) serial port on PA0 (output only)
-#  -DSWSERBAUD=...  set baudrate for serial port
-ADDDEFS	= #-DSWSERIALO -DSWSERBAUD=9600
+#  -DCURRENTLYNONE  does nothing
+ADDDEFS	= 
+# Include support for (virtual) serial console over the USB port?
+# This adds at least 8 KB of bloat.
+SERIALCONSOLE = 1
 
 # target mcu (atmega 32u4)
 MCU	= atmega32u4
@@ -25,13 +27,18 @@ AVRDMCU	= m32u4
 # Clock Frequency of the AVR. Needed for various calculations.
 CPUFREQ		= 8000000UL
 
-SRCS	= eeprom.c lufa/LUFA/Drivers/USB/Core/USBTask.c lufa/LUFA/Drivers/USB/Core/AVR8/Endpoint_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/EndpointStream_AVR8.c lufa/LUFA/Drivers/USB/Core/Events.c lufa/LUFA/Drivers/USB/Core/DeviceStandardReq.c lufa/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c lufa/Descriptors.c lufa/console.c main.c
+SRCS	= eeprom.c lufa/console.c main.c
+ifeq ($(SERIALCONSOLE), 1)
+# The serial console is the only thing needing lufa and adds the whole mess of this dependency.
+SRCS	+= lufa/LUFA/Drivers/USB/Core/USBTask.c lufa/LUFA/Drivers/USB/Core/AVR8/Endpoint_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/EndpointStream_AVR8.c lufa/LUFA/Drivers/USB/Core/Events.c lufa/LUFA/Drivers/USB/Core/DeviceStandardReq.c lufa/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c lufa/Descriptors.c
+endif
 PROG	= foxgeig2018
 
 # compiler flags
 CFLAGS	= -g -Os -Wall -Wno-pointer-sign -std=c99 -mmcu=$(MCU) $(ADDDEFS)
-# FIXME
-CFLAGS +=  -DF_USB=8000000UL -DUSE_LUFA_CONFIG_HEADER -DINTERRUPT_CONTROL_ENDPOINT -I./lufa
+ifeq ($(SERIALCONSOLE), 1)
+CFLAGS +=  -DF_USB=8000000UL -DUSE_LUFA_CONFIG_HEADER -DINTERRUPT_CONTROL_ENDPOINT -DSERIALCONSOLE -I./lufa
+endif
 
 # linker flags
 LDFLAGS = -g -mmcu=$(MCU) -Wl,-Map,$(PROG).map -Wl,--gc-sections
@@ -65,7 +72,7 @@ eeprom: compile
 	$(OBJCOPY) -j .eeprom --change-section-lma .eeprom=0 -O binary $(PROG).elf $(PROG)_eeprom.bin
 
 clean:
-	rm -f $(PROG) $(OBJS) *~ *.elf *.rom *.bin *.eep *.o *.lst *.map *.srec *.hex
+	rm -f $(PROG) $(OBJS) *~ lufa/*~ *.elf *.rom *.bin *.eep *.o *.lst *.map *.srec *.hex
 
 fuses:
 	@echo "Nothing is known about the fuses yet"
