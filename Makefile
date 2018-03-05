@@ -26,7 +26,7 @@ AVRDMCU	= m32u4
 CPUFREQ		= 8000000UL
 
 # main.c temporaer raus fuer lufa/VirtualSerial.c
-SRCS	= eeprom.c lufa/LUFA/Drivers/USB/Core/USBTask.c lufa/LUFA/Drivers/USB/Core/AVR8/Endpoint_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/EndpointStream_AVR8.c lufa/LUFA/Drivers/USB/Core/Events.c lufa/LUFA/Drivers/USB/Core/DeviceStandardReq.c lufa/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c lufa/Descriptors.c lufa/VirtualSerial.c
+SRCS	= eeprom.c lufa/LUFA/Drivers/USB/Core/USBTask.c lufa/LUFA/Drivers/USB/Core/AVR8/Endpoint_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/EndpointStream_AVR8.c lufa/LUFA/Drivers/USB/Core/Events.c lufa/LUFA/Drivers/USB/Core/DeviceStandardReq.c lufa/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c lufa/Descriptors.c lufa/console.c
 PROG	= foxgeig2018
 
 # compiler flags
