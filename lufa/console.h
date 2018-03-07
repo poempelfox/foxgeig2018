@@ -1,3 +1,8 @@
+/* This originally was the "VirtualSerial" example from the LUFA library.
+ * It has been turned into a proper serial console for foxgeig2018.
+ * What follows is the original copyright notice, although probably not enough
+ * of the old example remains to warrant that.
+ */
 /*
              LUFA Library
      Copyright (C) Dean Camera, 2017.
@@ -28,19 +33,10 @@
   this software.
 */
 
-#ifndef _VIRTUALSERIAL_H_
-#define _VIRTUALSERIAL_H_
+#ifndef _CONSOLE_H_
+#define _CONSOLE_H_
 
-/* Includes: */
-#include <avr/io.h>
-#include <avr/wdt.h>
-#include <avr/power.h>
-#include <avr/interrupt.h>
-#include <string.h>
-
-#include "Descriptors.h"
-
-#include <LUFA/Drivers/USB/USB.h>
+#include <avr/pgmspace.h>
 
 /* USB functions (not to be called by application) */
 void CDC_Task(void);
@@ -50,8 +46,24 @@ void EVENT_USB_Device_Disconnect(void);
 void EVENT_USB_Device_ConfigurationChanged(void);
 void EVENT_USB_Device_ControlRequest(void);
 
+/* Init needs to be called with IRQs still disabled! */
 void console_init(void);
-void console_work(void); /* FIXME we should use interrupts, not this mess */
+/* Needs to be called regulary to handle pending USB work */
+void console_work(void);
+
+/* These need to be called with IRQs disabled! They are usually NOT what
+ * you want. */
+void console_printchar_noirq(uint8_t c);
+void console_printtext_noirq(const uint8_t * what);
+void console_printpgm_noirq_P(PGM_P what);
+void console_printhex8_noirq(uint8_t what);
+void console_printdec_noirq(uint8_t what);
+void console_printbin8_noirq(uint8_t what);
+
+/* These can be called with interrupts enabled (and will reenable them!) */
+void console_printtext(const uint8_t * what);
+void console_printpgm_P(PGM_P what);
+void console_printhex8(uint8_t what);
+void console_printdec(uint8_t what);
 
 #endif
-

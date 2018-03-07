@@ -364,9 +364,11 @@ void CDC_Task(void)
       }
       console_inputchar(inp[0]);
     }
-    /* Endpoint_ClearOUT(); */
+    Endpoint_ClearOUT();
   }
 
+  /* Select the Serial Tx Endpoint */
+  Endpoint_SelectEndpoint(CDC_TX_EPADDR);
   /* Do we have anything to send, and can we send? */
   if ((outputhead != outputtail) && (Endpoint_IsINReady())) {
     uint8_t whattosend[CDC_TXRX_EPSIZE];
@@ -382,8 +384,6 @@ void CDC_Task(void)
       }
       bytestosend++;
     }
-    /* Select the Serial Tx Endpoint */
-    Endpoint_SelectEndpoint(CDC_TX_EPADDR);
     Endpoint_Write_Stream_LE(whattosend, bytestosend, NULL);
     Endpoint_ClearIN();
   }
