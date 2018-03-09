@@ -73,7 +73,7 @@ static const uint8_t PROMPT[] PROGMEM = "\r\n# ";
  * Note: Since we execute from interrupt context, we might occasionally
  * get corrupted values in the uint16_ts.
  */
-/* FIXME no external variables yet */
+extern uint8_t batvolt;
 
 /* Contains the current baud rate and other settings of the virtual serial port. While this demo does not use
  *  the physical USART and thus does not use these settings, they must still be retained and returned to the host
@@ -321,7 +321,12 @@ static void console_inputchar(uint8_t inpb) {
               }
             }
           } else if (strcmp_P(inputbuf, PSTR("status")) == 0) {
-            console_printpgm_noirq_P(PSTR("No status yet, sorry\r\n"));
+            uint8_t tmpbuf[40];
+            console_printpgm_noirq_P(PSTR("Status / last measured values:\r\n"));
+            console_printpgm_noirq_P(PSTR("LiPo battery voltage: "));
+            sprintf_P(tmpbuf, PSTR("%.2f"), (6.6 * batvolt) / 255.0);
+            console_printtext_noirq(tmpbuf);
+            console_printpgm_noirq_P(PSTR("V\r\n"));
           } else {
             console_printpgm_noirq_P(PSTR("Unknown command: "));
             console_printtext_noirq(inputbuf);

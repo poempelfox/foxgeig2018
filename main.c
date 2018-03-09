@@ -14,13 +14,14 @@
 #include <util/delay.h>
 
 #include "eeprom.h"
+#include "adc.h"
 #include "lufa/console.h"
 #if 0
 #include "rfm12.h"
 #endif
 
 /* The values last measured */
-/* Battery level. Range 0-255, 255 = our supply voltage = 3,3V */
+/* Battery level. Range 0-255, 255 = our supply voltage * 2 = 6,6V */
 uint8_t batvolt = 0;
 /* How often did we send a packet? */
 uint32_t pktssent = 0;
@@ -97,6 +98,7 @@ int main(void)
   loadsettingsfromeeprom();
   
   console_init();
+  adc_init();
 #if 0
   _delay_ms(500); /* The RFM12 needs some time to start up */
   
@@ -125,6 +127,11 @@ int main(void)
       ledstate = 0;
       PORTC &= (uint8_t)~_BV(PC7);
     }
+    adc_power(1);
+    adc_select(12);
+    adc_start();
+    batvolt = adc_read() >> 2;
+    adc_power(0);
     _delay_ms(1500);
     console_work();
   }
