@@ -270,7 +270,7 @@ static void console_inputchar(uint8_t inpb) {
             console_printpgm_noirq_P(WELCOMEMSG);
           } else if (strncmp_P(inputbuf, PSTR("showpins"), 8) == 0) {
             uint8_t which = 0;
-            uint8_t stal = 1; uint8_t endl = 4;
+            uint8_t stal = 2; uint8_t endl = 5;
             if (inputpos == 10) {
                     switch (inputbuf[9]) {
                     case 'a':
@@ -330,6 +330,8 @@ static void console_inputchar(uint8_t inpb) {
             console_printpgm_noirq_P(PSTR("V\r\n"));
             console_printpgm_noirq_P(PSTR("Packets sent: "));
             sprintf_P(tmpbuf, PSTR("%10lu"), pktssent);
+            console_printtext_noirq(tmpbuf);
+            console_printpgm_noirq_P(PSTR("\r\n"));
           } else {
             console_printpgm_noirq_P(PSTR("Unknown command: "));
             console_printtext_noirq(inputbuf);
