@@ -10,12 +10,15 @@
 #include <util/delay.h>
 #include <math.h>
 #include "rfm69.h"
+#include "console.h"
 
 /* Pin mappings:
- *  SS     PB4 (? not verified, the schematics do not tell!)
+ *  SS     PB4
  *  MOSI   PB2
  *  MISO   PB3
  *  SCK    PB1
+ *  RESET  PD4
+ *  OUROWNSS PB0 (not used!)
  */
 #define RFMDDR   DDRB
 #define RFMPIN   PINB
@@ -100,7 +103,7 @@ void rfm69_sendarray(uint8_t * data, uint8_t length) {
   /* Now fill the FIFO. We manually set SS and use spi8 because this
    * is the only "register" that is larger than 8 bits. */
   RFMPORT &= (uint8_t)~_BV(RFMPIN_SS);
-  rfm69_spi8(0x00); /* Select RegFifo */
+  rfm69_spi8(0x80); /* Select RegFifo (0x00) for writing (|0x80) */
   for (int i = 0; i < length; i++) {
     rfm69_spi8(data[i]);
   }
@@ -108,7 +111,16 @@ void rfm69_sendarray(uint8_t * data, uint8_t length) {
   /* FIFO has been filled. Tell the RFM69 to send by just turning on the transmitter. */
   rfm69_settransmitter(1);
   /* Wait for transmission to finish, visible in RegIrqFlags2. */
-  while (!(rfm69_readreg(0x28) & 0x08)) {
+  uint8_t reg28 = 0x00;
+  uint8_t maxreps = 240;
+  while (!(reg28 & 0x08)) {
+    uint8_t reg27 = rfm69_readreg(0x27);
+    reg28 = rfm69_readreg(0x28);
+    console_printtext(" >");
+    console_printhex8(reg27);
+    console_printhex8(reg28);
+    maxreps--;
+    if (maxreps == 0) break;
     /* Yes, this has the potential to hang indefinitely if something is wrong
      * with the RFM69, but then we're useless anyways, so we'll just let the
      * watchdog timer reset us. */
@@ -118,6 +130,11 @@ void rfm69_sendarray(uint8_t * data, uint8_t length) {
 
 void rfm69_initport(void) {
   /* Configure Pins for output / input */
+  /* on the feather, the RESET pin of the RFM is connected to PD4. Trigger a
+   * reset by pulling the RESET pin HIGH for at least 100us. */
+  DDRD |= _BV(PD4);
+  PORTD |= _BV(PD4);
+  /* Now the rest of the I/O pins */
   RFMDDR |= _BV(RFMPIN_MOSI);
   RFMDDR &= (uint8_t)~_BV(RFMPIN_MISO);
   RFMDDR |= _BV(RFMPIN_SCK);
@@ -133,12 +150,15 @@ void rfm69_initport(void) {
    * set master mode with rate clk/4 = 2 MHz (maximum of RFM69 is unknown) */
   SPCR = _BV(SPE) | _BV(MSTR);
   SPSR = 0x00; /* To set SPI2X to 0, rest is read-only anyways */
+  
+  _delay_us(200); /* 100us minimum time the RESET pin needs to be pulled high on the RFM */
+  PORTD &= (uint8_t)~_BV(PD4);
 }
 
 void rfm69_initchip(void) {
   /* RegOpMode -> standby. The jeenode sketch also set sequencer to forced,
    * but that seems pointless, automatic should work too. */
-  rfm69_writereg(0x01, 0x00 | (0x03 << 2));
+  rfm69_writereg(0x01, 0x80 | (0x03 << 2));
   /* RegDataModul -> PacketMode, FSK, Shaping 0 */
   rfm69_writereg(0x02, 0x18);
   /* RegFDevMsb / RegFDevLsb -> 0x05C3 (90 kHz). */
@@ -170,8 +190,12 @@ void rfm69_initchip(void) {
   /* RegTestDagc -> improvedlowbeta0 - I haven't got the faintest... */
   rfm69_writereg(0x6F, 0x30);
   /* Set Frequency */
-  /* FIXME I do not think this calculation is correct */
-  uint32_t freq = RFM_FREQUENCY * (32000000UL / ((uint32_t)2 << 1));
+  /* The datasheet is horrible to read at that point, never stating a clear
+   * formula ready for use. */
+  /* F(Step) = F(XOSC) / (2 ** 19)     524288
+   * F(forreg) = FREQUENCY_IN_HZ / F(Step) */
+  uint32_t freq = (RFM_FREQUENCY * 1000) / (32000000UL / ((uint32_t)1 << 19));
+  freq = (((RFM_FREQUENCY * 1000) << 2) / (32000000UL >> 11)) << 6;
   rfm69_writereg(0x07, (freq >> 16) & 0xff);
   rfm69_writereg(0x08, (freq >>  8) & 0xff);
   rfm69_writereg(0x09, (freq >>  0) & 0xff);

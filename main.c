@@ -100,9 +100,8 @@ int main(void)
   console_init();
   adc_init();
   rfm69_initport();
-  
-  _delay_ms(500); /* The RFM69 needs some time to start up */
-  
+  /* The RFM69 needs some time to start up (5 ms according to data sheet, we wait 10 to be sure) */
+  _delay_ms(10);
   rfm69_initchip();
   rfm69_setsleep(1);
   
@@ -123,7 +122,7 @@ int main(void)
   rfm69_setsleep(0);  /* This mainly turns on the oscillator again */
   prepareframe();
   console_printpgm_P(PSTR(" TX "));
-  /* rfm69_sendarray(frametosend, 10); */
+  rfm69_sendarray(frametosend, 10);
   pktssent++;
   rfm69_setsleep(1);
 
