@@ -21,8 +21,10 @@
 #endif
 
 /* The values last measured */
-/* Battery level. Range 0-255, 255 = our supply voltage * 2 = 6,6V */
-uint8_t batvolt = 0;
+/* Battery level. Range 0-1023, 1023 = our supply voltage * 2 = 6,6V
+ * We send this shifted to the right by two as uint8_t (because the lower two
+ * bits are just noise anyways) */
+uint16_t batvolt = 0;
 /* How often did we send a packet? */
 uint32_t pktssent = 0;
 
@@ -73,12 +75,12 @@ void prepareframe(void)
   frametosend[ 0] = 0xCC;
   frametosend[ 1] = sensorid;
   frametosend[ 2] = 6; /* 6 bytes of data follow (CRC not counted) */
-  frametosend[ 3] = 0xf8; /* Sensor type: FoxGeig */
+  frametosend[ 3] = 0xf9; /* Sensor type: FoxGeig */
   /* frametosend[ 4] = (temp >> 8) & 0xff;
   frametosend[ 5] = (temp >> 0) & 0xff;
   frametosend[ 6] = (hum >> 8) & 0xff;
   frametosend[ 7] = (hum >> 0) & 0xff; */
-  frametosend[ 8] = batvolt;
+  frametosend[ 8] = batvolt >> 2;
   frametosend[ 9] = calculatecrc(frametosend, 9);
 }
 
@@ -130,7 +132,7 @@ int main(void)
     adc_power(1);
     adc_select(12);
     adc_start();
-    batvolt = adc_read() >> 2;
+    batvolt = adc_read();
     adc_power(0);
     _delay_ms(1500);
     console_work();

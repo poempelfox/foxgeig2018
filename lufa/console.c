@@ -71,9 +71,10 @@ static const uint8_t PROMPT[] PROGMEM = "\r\n# ";
 /* these are defined in main.c and contain our last measured data for output
  * in the status command.
  * Note: Since we execute from interrupt context, we might occasionally
- * get corrupted values in the uint16_ts.
+ * get corrupted values in the uint16_t and uint32_ts.
  */
-extern uint8_t batvolt;
+extern uint16_t batvolt;
+extern uint32_t pktssent;
 
 /* Contains the current baud rate and other settings of the virtual serial port. While this demo does not use
  *  the physical USART and thus does not use these settings, they must still be retained and returned to the host
@@ -324,9 +325,11 @@ static void console_inputchar(uint8_t inpb) {
             uint8_t tmpbuf[40];
             console_printpgm_noirq_P(PSTR("Status / last measured values:\r\n"));
             console_printpgm_noirq_P(PSTR("LiPo battery voltage: "));
-            sprintf_P(tmpbuf, PSTR("%.2f"), (6.6 * batvolt) / 255.0);
+            sprintf_P(tmpbuf, PSTR("%.2f"), (6.6 * batvolt) / 1023.0);
             console_printtext_noirq(tmpbuf);
             console_printpgm_noirq_P(PSTR("V\r\n"));
+            console_printpgm_noirq_P(PSTR("Packets sent: "));
+            sprintf_P(tmpbuf, PSTR("%10lu"), pktssent);
           } else {
             console_printpgm_noirq_P(PSTR("Unknown command: "));
             console_printtext_noirq(inputbuf);
