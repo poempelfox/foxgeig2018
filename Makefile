@@ -27,7 +27,7 @@ AVRDMCU	= m32u4
 # Clock Frequency of the AVR. Needed for various calculations.
 CPUFREQ		= 8000000UL
 
-SRCS	= adc.c eeprom.c lufa/console.c main.c
+SRCS	= adc.c eeprom.c rfm69.c lufa/console.c main.c
 ifeq ($(SERIALCONSOLE), 1)
 # The serial console is the only thing needing lufa and adds the whole mess of this dependency.
 SRCS	+= lufa/LUFA/Drivers/USB/Core/USBTask.c lufa/LUFA/Drivers/USB/Core/AVR8/Endpoint_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/EndpointStream_AVR8.c lufa/LUFA/Drivers/USB/Core/Events.c lufa/LUFA/Drivers/USB/Core/DeviceStandardReq.c lufa/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c lufa/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c lufa/Descriptors.c
@@ -82,7 +82,10 @@ clean:
 fuses:
 	@echo "Nothing is known about the fuses yet"
 
-upload: uploadflash uploadeeprom
+upload: uploadflash
+	@echo "Note: 'make upload' does only upload flash, not eeprom, because you manually"
+	@echo " need to reset the feather again before upload eeprom is possible."
+	@echo "You need to explicitly call 'make uploadeeprom' to upload EEPROM."
 
 uploadflash:
 	$(AVRDUDE) -c avr109 -p $(AVRDMCU) -P /dev/ttyACM0 -U flash:w:$(PROG).hex

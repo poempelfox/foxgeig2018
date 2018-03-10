@@ -15,10 +15,8 @@
 
 #include "eeprom.h"
 #include "adc.h"
+#include "rfm69.h"
 #include "lufa/console.h"
-#if 0
-#include "rfm12.h"
-#endif
 
 /* The values last measured */
 /* Battery level. Range 0-1023, 1023 = our supply voltage * 2 = 6,6V
@@ -62,12 +60,12 @@ static uint8_t calculatecrc(uint8_t * data, uint8_t len)
  * Byte  0: Startbyte (=0xCC)
  * Byte  1: Sensor-ID (0 - 255/0xff)
  * Byte  2: Number of data bytes that follow (6)
- * Byte  3: Sensortype (=0xf7 for FoxTemp)
- * Byte  4: temperature MSB (raw value from SHT31)
- * Byte  5: temperature LSB
- * Byte  6: humidity MSB (raw value from SHT31)
- * Byte  7: humidity LSB
- * Byte  8: Battery voltage
+ * Byte  3: Sensortype (=0xf9 for FoxGeig)
+ * Byte  4: 
+ * Byte  5: 
+ * Byte  6: 
+ * Byte  7: 
+ * Byte  8: Battery voltage (0-255, 255 = 6.6V)
  * Byte  9: CRC
  */
 void prepareframe(void)
@@ -101,12 +99,12 @@ int main(void)
   
   console_init();
   adc_init();
-#if 0
-  _delay_ms(500); /* The RFM12 needs some time to start up */
+  rfm69_initport();
   
-  rfm12_initchip();
-  rfm12_setsleep(1);
-#endif
+  _delay_ms(500); /* The RFM69 needs some time to start up */
+  
+  rfm69_initchip();
+  rfm69_setsleep(1);
   
   /* Disable unused chip parts and ports */
   /* PE6 is the IRQ line from the RFM12. We don't use it. Make sure that pin
@@ -115,12 +113,20 @@ int main(void)
   DDRE &= (uint8_t)~_BV(PE6);
 
   /* All set up, enable interrupts and go. */
-  /* Not yet - it'll crash after a short while, probably because of some interrupt from USB! */
   sei();
 
   DDRC |= (uint8_t)_BV(PC7); /* PC7 is the LED pin, drive it */
   PORTC |= (uint8_t)_BV(PC7);
   uint8_t ledstate = 1;
+  
+  /* Nur ein ping vassili */
+  rfm69_setsleep(0);  /* This mainly turns on the oscillator again */
+  prepareframe();
+  console_printpgm_P(PSTR(" TX "));
+  /* rfm69_sendarray(frametosend, 10); */
+  pktssent++;
+  rfm69_setsleep(1);
+
   while (1) {
     if (ledstate == 0) {
       ledstate = 1;
@@ -159,12 +165,6 @@ int main(void)
         hum = hd.hum;
       }
       sht31_startmeas();
-      /* read voltage from ADC */
-      uint16_t adcval = adc_read();
-      adc_power(0);
-      /* we use a 1 M / 10 MOhm voltage divider, thus the voltage we see on
-       * the ADC is 10/11 of the real voltage. */
-      batvolt = adcval >> 2;
       prepareframe();
       swserialo_printpgm_P(PSTR(" TX "));
       rfm12_sendarray(frametosend, 10);
