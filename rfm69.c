@@ -30,7 +30,7 @@
 #define RFMPIN_SCK   PB1
 #define RFMPIN_OURSS PB0
 
-#define RFM_FREQUENCY 868300ul
+#define RFM_FREQUENCY 868300.0
 #define RFM_DATARATE 17241.0
 
 #define PAYLOADSIZE 64
@@ -95,10 +95,13 @@ void rfm69_setsleep(uint8_t s) {
   } else {
     /* RegOpMode => STANDBY */
     rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | (0x01 << 2));
+    while (!(rfm69_readreg(0x27) & 0x80)) { /* Wait until ready */ }
   }
 }
 
 void rfm69_sendarray(uint8_t * data, uint8_t length) {
+  /* Set the length of our payload */
+  /* rfm69_writereg(0x38, length); */
   rfm69_clearfifo(); /* Clear the FIFO */
   /* Now fill the FIFO. We manually set SS and use spi8 because this
    * is the only "register" that is larger than 8 bits. */
@@ -112,18 +115,14 @@ void rfm69_sendarray(uint8_t * data, uint8_t length) {
   rfm69_settransmitter(1);
   /* Wait for transmission to finish, visible in RegIrqFlags2. */
   uint8_t reg28 = 0x00;
-  uint8_t maxreps = 240;
+  uint16_t maxreps = 10000;
   while (!(reg28 & 0x08)) {
-    uint8_t reg27 = rfm69_readreg(0x27);
     reg28 = rfm69_readreg(0x28);
-    console_printtext(" >");
-    console_printhex8(reg27);
-    console_printhex8(reg28);
     maxreps--;
-    if (maxreps == 0) break;
-    /* Yes, this has the potential to hang indefinitely if something is wrong
-     * with the RFM69, but then we're useless anyways, so we'll just let the
-     * watchdog timer reset us. */
+    if (maxreps == 0) {
+      console_printpgm_P(PSTR("![TX TIMED OUT]!"));
+      break;
+    }
   }
   rfm69_settransmitter(0);
 }
@@ -160,7 +159,7 @@ void rfm69_initchip(void) {
    * but that seems pointless, automatic should work too. */
   rfm69_writereg(0x01, 0x80 | (0x03 << 2));
   /* RegDataModul -> PacketMode, FSK, Shaping 0 */
-  rfm69_writereg(0x02, 0x18);
+  rfm69_writereg(0x02, 0x00);
   /* RegFDevMsb / RegFDevLsb -> 0x05C3 (90 kHz). */
   rfm69_writereg(0x05, 0x05);
   rfm69_writereg(0x06, 0xC3);
@@ -168,25 +167,32 @@ void rfm69_initchip(void) {
   rfm69_writereg(0x11, 0x9F);
   /* RegOcp -> OCP off */
   rfm69_writereg(0x13, 0x00);
-  /* We do not care about the receiver registers the jeelink sketch would set now */
+  /* RegRxBw -> DccFreq 010   Mant 16   Exp 2 - this is a receiver-register,
+   * we do not really care about it */
+  rfm69_writereg(0x19, 0x42);
   /* RegDioMapping2 -> disable clkout (but thats the default anyways) */
   rfm69_writereg(0x26, 0x07);
   rfm69_clearfifo(); /* this is reg 0x28 */
   /* RegRssiThresh -> 220 */
   rfm69_writereg(0x29, 220);
+  /* RegPreambleMsb / Lsb - we want 3 bytes of preamble (0xAA) */
+  rfm69_writereg(0x2C, 0x00);
+  rfm69_writereg(0x2D, 0x03);
   /* RegSyncConfig -> SyncOn FiFoFillAuto SyncSize=2 SyncTol=0 */
   rfm69_writereg(0x2E, 0x88);
   /* RegSyncValue1/2 (3-8 exist too but we only use 2 so do not need to set them) */
   rfm69_writereg(0x2F, 0x2D);
   rfm69_writereg(0x30, 0xD4);
-  /* RegPacketConfig1 -> CrcOn=0 */
+  /* RegPacketConfig1 -> FixedPacketLength CrcOn=0 */
   rfm69_writereg(0x37, 0x00);
-  /* RegPayloadLength -> PAYLOADSIZE (64) - FIXME? I don't think this makes sense */
-  rfm69_writereg(0x38, PAYLOADSIZE);
+  /* RegPayloadLength -> JeeLink-Sketch sets PAYLOADSIZE (64) but that does not
+   * make sense and actually seems to hang. Using either "0" or the real length
+   * seems to work. */
+  rfm69_writereg(0x38, 0);
   /* RegFifoThreshold -> TxStartCond=1 value=0x0f */
   rfm69_writereg(0x3C, 0x8F);
   /* RegPacketConfig2 -> AesOn=0 and AutoRxRestart=1 even if we do not care about RX */
-  rfm69_writereg(0x3D, 0x02);
+  rfm69_writereg(0x3D, 0x12);
   /* RegTestDagc -> improvedlowbeta0 - I haven't got the faintest... */
   rfm69_writereg(0x6F, 0x30);
   /* Set Frequency */
@@ -194,8 +200,13 @@ void rfm69_initchip(void) {
    * formula ready for use. */
   /* F(Step) = F(XOSC) / (2 ** 19)     524288
    * F(forreg) = FREQUENCY_IN_HZ / F(Step) */
-  uint32_t freq = (RFM_FREQUENCY * 1000) / (32000000UL / ((uint32_t)1 << 19));
-  freq = (((RFM_FREQUENCY * 1000) << 2) / (32000000UL >> 11)) << 6;
+  uint32_t freq = round((RFM_FREQUENCY * 1000.0) / (32000000.0 / (1UL << 19)));
+  /* (Alternative calculation from JeeNode library:
+   * Frequency steps are in units of (32,000,000 >> 19) = 61.03515625 Hz
+   * use multiples of 64 to avoid multi-precision arithmetic, i.e. 3906.25 Hz
+   * due to this, the lower 6 bits of the calculated factor will always be 0
+   * this is still 4 ppm, i.e. well below the radio's 32 MHz crystal accuracy
+   * freq = (((RFM_FREQUENCY * 1000) << 2) / (32000000UL >> 11)) << 6; */
   rfm69_writereg(0x07, (freq >> 16) & 0xff);
   rfm69_writereg(0x08, (freq >>  8) & 0xff);
   rfm69_writereg(0x09, (freq >>  0) & 0xff);
