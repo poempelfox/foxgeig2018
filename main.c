@@ -13,8 +13,9 @@
 #include <string.h>
 #include <util/delay.h>
 
-#include "eeprom.h"
 #include "adc.h"
+#include "eeprom.h"
+#include "geiger.h"
 #include "rfm69.h"
 #include "lufa/console.h"
 
@@ -99,6 +100,7 @@ int main(void)
   
   console_init();
   adc_init();
+  geiger_init();
   rfm69_initport();
   /* The RFM69 needs some time to start up (5 ms according to data sheet, we wait 10 to be sure) */
   _delay_ms(10);
@@ -106,10 +108,15 @@ int main(void)
   rfm69_setsleep(1);
   
   /* Disable unused chip parts and ports */
-  /* PE6 is the IRQ line from the RFM12. We don't use it. Make sure that pin
-   * is tristated on our side (it won't float, the RFM12B pulls it) */
+  /* PE6 is the IRQ line from the RFM69. We don't use it. Make sure that pin
+   * is tristated on our side (it won't float, the RFM69 pulls it) */
   PORTE &= (uint8_t)~_BV(PE6);
   DDRE &= (uint8_t)~_BV(PE6);
+
+  /* Prepare sleep mode */
+  /* SLEEP_MODE_IDLE is the only sleepmode we can safely use. */
+  set_sleep_mode(SLEEP_MODE_IDLE);
+  sleep_enable();
 
   /* All set up, enable interrupts and go. */
   sei();
@@ -117,7 +124,7 @@ int main(void)
   DDRC |= (uint8_t)_BV(PC7); /* PC7 is the LED pin, drive it */
   PORTC |= (uint8_t)_BV(PC7);
   uint8_t ledstate = 1;
-  
+
   /* Nur ein ping vassili */
   rfm69_setsleep(0);  /* This mainly turns on the oscillator again */
   prepareframe();
@@ -139,48 +146,7 @@ int main(void)
     adc_start();
     batvolt = adc_read();
     adc_power(0);
-    _delay_ms(1500);
     console_work();
+    sleep_cpu(); /* Go to sleep until the next IRQ arrives */
   }
-#if 0
-  sht31_startmeas();
-
-  uint16_t transmitinterval = 2; /* this is in multiples of the watchdog timer timeout (8S)! */
-  uint8_t mlcnt = 0;
-  while (1) { /* Main loop, we should never exit it. */
-    mlcnt++;
-    swserialo_printpgm_P(PSTR("."));
-    if (mlcnt > transmitinterval) {
-      rfm12_setsleep(0);  /* This mainly turns on the oscillator again */
-      adc_power(1);
-      adc_start();
-      /* Fetch values from PREVIOUS measurement */
-      struct sht31data hd;
-      sht31_read(&hd);
-      temp = 0xffff;
-      hum = 0xffff;
-      if (hd.valid) {
-        temp = hd.temp;
-        hum = hd.hum;
-      }
-      sht31_startmeas();
-      prepareframe();
-      swserialo_printpgm_P(PSTR(" TX "));
-      rfm12_sendarray(frametosend, 10);
-      pktssent++;
-      /* Semirandom delay: the lowest bits from the ADC are mostly noise, so
-       * we use that */
-      transmitinterval = 3 + (adcval & 0x0001);
-      rfm12_setsleep(1);
-      mlcnt = 0;
-    }
-    wdt_reset();
-    sleep_cpu(); /* Go to sleep until the watchdog timer wakes us */
-    /* We should only reach this if we were just woken by the watchdog timer.
-     * We need to re-enable the watchdog-interrupt-flag, else the next watchdog
-     * -reset will not just trigger the interrupt, but be a full reset. */
-    WDTCSR = _BV(WDCE) | _BV(WDE);
-    WDTCSR = _BV(WDE) | _BV(WDIE) | _BV(WDP0) | _BV(WDP3);
-  }
-#endif
 }
