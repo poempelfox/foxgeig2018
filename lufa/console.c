@@ -75,6 +75,8 @@ static const uint8_t PROMPT[] PROGMEM = "\r\n# ";
  */
 extern uint16_t batvolt;
 extern uint32_t pktssent;
+extern uint32_t geigcntavg1min;
+extern uint32_t geigcntavg60min;
 
 /* Contains the current baud rate and other settings of the virtual serial port. While this demo does not use
  *  the physical USART and thus does not use these settings, they must still be retained and returned to the host
@@ -338,6 +340,21 @@ static void console_inputchar(uint8_t inpb) {
             sprintf_P(tmpbuf, PSTR("%10lu"), pktssent);
             console_printtext_noirq(tmpbuf);
             console_printpgm_noirq_P(PSTR("\r\n"));
+            console_printpgm_noirq_P(PSTR("Geiger counter,  1 min average: "));
+            if (geigcntavg1min > 0xfffff) {
+              console_printpgm_noirq_P(PSTR("(no valid data)"));
+            } else {
+              sprintf_P(tmpbuf, PSTR("%10lu"), geigcntavg1min);
+              console_printtext_noirq(tmpbuf);
+            }
+            console_printpgm_noirq_P(PSTR("\r\n"));
+            console_printpgm_noirq_P(PSTR("Geiger counter, 60 min average: "));
+            if (geigcntavg60min > 0xfffff) {
+              console_printpgm_noirq_P(PSTR("(no valid data)"));
+            } else {
+              sprintf_P(tmpbuf, PSTR("%10lu"), geigcntavg60min);
+              console_printtext_noirq(tmpbuf);
+            }
           } else {
             console_printpgm_noirq_P(PSTR("Unknown command: "));
             console_printtext_noirq(inputbuf);
