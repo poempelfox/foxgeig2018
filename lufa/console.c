@@ -270,7 +270,7 @@ static void console_inputchar(uint8_t inpb) {
             console_printpgm_noirq_P(WELCOMEMSG);
           } else if (strncmp_P(inputbuf, PSTR("showpins"), 8) == 0) {
             uint8_t which = 0;
-            uint8_t stal = 2; uint8_t endl = 5;
+            uint8_t stal = 2; uint8_t endl = 6;
             if (inputpos == 10) {
                     switch (inputbuf[9]) {
                     case 'a':
@@ -288,6 +288,9 @@ static void console_inputchar(uint8_t inpb) {
                     case 'e':
                     case 'E':
                             which = 5; break;
+                    case 'f':
+                    case 'F':
+                            which = 6; break;
                     };
             }
             if (which) {
@@ -308,6 +311,9 @@ static void console_inputchar(uint8_t inpb) {
                       break;
               case 5: pstatus = PINE;
                       console_printpgm_noirq_P(PSTR("PINE: 0x"));
+                      break;
+              case 6: pstatus = PINF;
+                      console_printpgm_noirq_P(PSTR("PINF: 0x"));
                       break;
               default:
                       pstatus = 0;
