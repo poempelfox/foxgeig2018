@@ -39,8 +39,6 @@
 #include <avr/pgmspace.h>
 
 /* USB functions (not to be called by application) */
-void CDC_Task(void);
-
 void EVENT_USB_Device_Connect(void);
 void EVENT_USB_Device_Disconnect(void);
 void EVENT_USB_Device_ConfigurationChanged(void);
@@ -49,7 +47,8 @@ void EVENT_USB_Device_ControlRequest(void);
 /* Init needs to be called with IRQs still disabled! */
 void console_init(void);
 /* Needs to be called regulary to handle pending USB work */
-void console_work(void);
+/* Returns 1 if it actually had something to do, 0 otherwise. */
+uint8_t console_work(void);
 
 /* These need to be called with IRQs disabled! They are usually NOT what
  * you want. */

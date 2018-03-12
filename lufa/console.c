@@ -376,11 +376,12 @@ static void console_inputchar(uint8_t inpb) {
 
 /* Function to manage CDC data transmission and reception to and from the host. */
 /* call with interrupts disabled! */
-void CDC_Task(void)
+uint8_t CDC_Task(void)
 {
+  uint8_t res = 0;
   /* Device must be connected and configured for the task to run */
   if (USB_DeviceState != DEVICE_STATE_Configured)
-    return;
+    return res;
 
   /* Select the Serial Rx Endpoint */
   Endpoint_SelectEndpoint(CDC_RX_EPADDR);
@@ -396,6 +397,7 @@ void CDC_Task(void)
         break;
       }
       console_inputchar(inp[0]);
+      res = 1;
     }
     Endpoint_ClearOUT();
   }
@@ -420,7 +422,10 @@ void CDC_Task(void)
     Endpoint_Write_Stream_LE(whattosend, bytestosend, NULL);
     Endpoint_ClearIN();
   }
-
+  if (outputhead != outputtail) {
+    res = 1;
+  }
+  return res;
 }
 
 void console_printchar_noirq(uint8_t what) {
@@ -526,16 +531,19 @@ void console_init(void)
   console_printpgm_noirq_P(PROMPT);
 }
 
-void console_work(void)
+uint8_t console_work(void)
 {
+  uint8_t res;
   cli();
-  CDC_Task();
+  res = CDC_Task();
   sei();
+  return res;
 }
 
 #else /* SERIALCONSOLE */
 
 void console_init(void) { }
+uint8_t console_work(void) { return 0; }
 void console_printchar_noirq(uint8_t c) { }
 void console_printtext(const uint8_t * what) { }
 void console_printpgm_P(PGM_P what) { }
