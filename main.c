@@ -107,6 +107,11 @@ void loadsettingsfromeeprom(void)
 
 int main(void)
 {
+  uint16_t lastts = 0xf000; /* This forces an update immediately after start */
+  uint16_t curts;
+  uint16_t tsdiff;
+  uint8_t transmitinterval = 5; /* Transmitinterval in ticks of 6s, so 5 = 30s */
+  
   /* Initialize stuff */
   
   loadsettingsfromeeprom();
@@ -141,30 +146,44 @@ int main(void)
   PORTC |= (uint8_t)_BV(PC7);
   uint8_t ledstate = 1;
 
-  /* Nur ein ping vassili */
-  rfm69_setsleep(0);  /* This mainly turns on the oscillator again */
-  prepareframe();
-  console_printpgm_P(PSTR(" TX "));
-  rfm69_sendarray(frametosend, 12);
-  pktssent++;
-  rfm69_setsleep(1);
-
   while (1) {
     wdt_reset();
-    if (ledstate == 0) {
-      ledstate = 1;
-      PORTC |= (uint8_t)_BV(PC7);
-    } else {
-      ledstate = 0;
-      PORTC &= (uint8_t)~_BV(PC7);
+    curts = geiger_getticks();
+    tsdiff = curts - lastts;
+    if (tsdiff >= transmitinterval) {
+      /* Time to update values and send */
+      if (ledstate == 0) {
+        ledstate = 1;
+        PORTC |= (uint8_t)_BV(PC7);
+      } else {
+        ledstate = 0;
+        PORTC &= (uint8_t)~_BV(PC7);
+      }
+      adc_power(1);
+      adc_select(12);
+      adc_start();
+      geigcntavg1min = geiger_get1minavg();
+      geigcntavg60min = geiger_get60minavg();
+      batvolt = adc_read();
+      adc_power(0);
+      /* SEND */
+      rfm69_setsleep(0);  /* This mainly turns on the oscillator again */
+      prepareframe();
+      console_printpgm_P(PSTR(" TX "));
+      rfm69_sendarray(frametosend, 12);
+      rfm69_setsleep(1);
+      pktssent++;
+      lastts = curts; /* Remember when we last sent a packet */
+      /* We use the lower two bits of batvolt as the random noise that it is */
+      uint8_t rnd = batvolt & 3;
+      if (rnd == 3) {
+        transmitinterval = 6;
+      } else if (rnd == 0) {
+        transmitinterval = 4;
+      } else { /* 1 or 2 */
+        transmitinterval = 5;
+      }
     }
-    adc_power(1);
-    adc_select(12);
-    adc_start();
-    geigcntavg1min = geiger_get1minavg();
-    geigcntavg60min = geiger_get60minavg();
-    batvolt = adc_read();
-    adc_power(0);
     console_work();
     wdt_reset();
     sleep_cpu(); /* Go to sleep until the next IRQ arrives */
