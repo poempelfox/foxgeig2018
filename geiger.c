@@ -17,6 +17,7 @@ uint8_t geiger_historypos = 0;
 ISR(TIMER3_CAPT_vect)
 {
   t3ovfcnt++;
+  ticks++;
   if (t3ovfcnt == 5) {
     /* console_printpgm_noirq_P(PSTR(" !30s! ")); */
     /* 30 seconds have passed, record current value. */
@@ -25,7 +26,6 @@ ISR(TIMER3_CAPT_vect)
     geiger_historypos++;
     if (geiger_historypos >= SIZEOFGEIGERHISTORY) { geiger_historypos = 0; }
     t3ovfcnt = 0;
-    ticks++;
   }
 }
 
