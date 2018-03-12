@@ -9,6 +9,7 @@
 
 static uint8_t t3ovfcnt = 0;
 static uint16_t currentgeigcount = 0;
+static uint16_t ticks = 0;
 
 uint16_t geiger_valuehistory[SIZEOFGEIGERHISTORY];
 uint8_t geiger_historypos = 0;
@@ -24,6 +25,7 @@ ISR(TIMER3_CAPT_vect)
     geiger_historypos++;
     if (geiger_historypos >= SIZEOFGEIGERHISTORY) { geiger_historypos = 0; }
     t3ovfcnt = 0;
+    ticks++;
   }
 }
 
@@ -86,6 +88,15 @@ uint32_t geiger_get60minavg(void)
   } else {
     return 0xffffff;
   }
+}
+
+uint16_t geiger_getticks(void)
+{
+  uint16_t res;
+  cli();
+  res = ticks;
+  sei();
+  return res;
 }
 
 void geiger_init(void)
