@@ -47,8 +47,9 @@ void EVENT_USB_Device_ControlRequest(void);
 /* Init needs to be called with IRQs still disabled! */
 void console_init(void);
 /* Needs to be called regulary to handle pending USB work */
-/* Returns 1 if it actually had something to do, 0 otherwise. */
-uint8_t console_work(void);
+void console_work(void);
+/* Check if we're connected to a PC. */
+uint8_t console_isusbconfigured(void);
 
 /* These need to be called with IRQs disabled! They are usually NOT what
  * you want. */

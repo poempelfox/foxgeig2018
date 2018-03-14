@@ -143,20 +143,12 @@ int main(void)
   sei();
 
   DDRC |= (uint8_t)_BV(PC7); /* PC7 is the LED pin, drive it */
-  PORTC |= (uint8_t)_BV(PC7);
-  uint8_t ledstate = 1;
 
   while (1) {
     wdt_reset();
+    PORTC |= (uint8_t)_BV(PC7);
     curts = geiger_getticks();
     tsdiff = curts - lastts;
-    if (ledstate == 0) {
-      ledstate = 1;
-      PORTC |= (uint8_t)_BV(PC7);
-    } else {
-      ledstate = 0;
-      PORTC &= (uint8_t)~_BV(PC7);
-    }
     if (tsdiff >= transmitinterval) {
       /* Time to update values and send */
       adc_power(1);
@@ -184,9 +176,12 @@ int main(void)
         transmitinterval = 5;
       }
     }
-    if (console_work()) { /* We had something to do, so lets NOT go to sleep and instead loop */
-      /* console_printtext("!S"); */
-    } else {
+    console_work();
+    PORTC &= (uint8_t)~_BV(PC7);
+    if (!console_isusbconfigured()) {
+      /* Don't go to sleep when USB is configured. Because then there is no
+       * lack of power, and more importantly, we want the console to feel
+       * "snappy" and we can't get that if we sleep for 6 seconds. */
       wdt_reset(); /* Buy us 8 seconds time because the next IRQ might only arrive in 6 seconds */
       sleep_cpu(); /* Go to sleep until the next IRQ arrives */
     }
