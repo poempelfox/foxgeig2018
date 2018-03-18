@@ -73,12 +73,14 @@ static uint8_t calculatecrc(uint8_t * data, uint8_t len)
  * Byte  1: Sensor-ID (0 - 255/0xff)
  * Byte  2: Number of data bytes that follow (6)
  * Byte  3: Sensortype (=0xf9 for FoxGeig)
- * Byte  4: 
- * Byte  5: 
- * Byte  6: 
- * Byte  7: 
- * Byte  8: Battery voltage (0-255, 255 = 6.6V)
- * Byte  9: CRC
+ * Byte  4: CountsPerMinute for last minute, MSB
+ * Byte  5: CountsPerMinute for last minute,
+ * Byte  6: CountsPerMinute for last minute, LSB
+ * Byte  7: CountsPerMinute for last 60 minutes, MSB
+ * Byte  8: CountsPerMinute for last 60 minutes,
+ * Byte  9: CountsPerMinute for last 60 minutes, LSB
+ * Byte 10: Battery voltage (0-255, 255 = 6.6V)
+ * Byte 11: CRC
  */
 void prepareframe(void)
 {
