@@ -56,15 +56,19 @@ static uint8_t rfm69_spi8(uint8_t value) {
 }
 
 uint16_t rfm69_spi16(uint16_t value) {
+  _delay_us(1);
   RFMPORT &= (uint8_t)~_BV(RFMPIN_SS);
+  _delay_us(1);
   uint16_t reply = rfm69_spi8(value >> 8) << 8;
   reply |= rfm69_spi8(value & 0xff);
+  _delay_us(1);
   RFMPORT |= _BV(RFMPIN_SS);
+  _delay_us(1);
   
   return reply;
 }
 
-static uint8_t rfm69_readreg(uint8_t reg) {
+uint8_t rfm69_readreg(uint8_t reg) {
   return rfm69_spi16(((uint16_t)(reg & 0x7f) << 8) | 0x00) & 0xff;
 }
 
@@ -81,20 +85,20 @@ void rfm69_clearfifo(void) {
 void rfm69_settransmitter(uint8_t e) {
   if (e) {
     /* RegOpMode => TRANSMIT */
-    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | (0x03 << 2));
+    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | 0x0C);
   } else {
     /* RegOpMode => STANDBY */
-    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | (0x01 << 2));
+    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | 0x04);
   }
 }
 
 void rfm69_setsleep(uint8_t s) {
   if (s) {
     /* RegOpMode => SLEEP */
-    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | (0x00 << 2));
+    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | 0x00);
   } else {
     /* RegOpMode => STANDBY */
-    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | (0x01 << 2));
+    rfm69_writereg(0x01, (rfm69_readreg(0x01) & 0xE3) | 0x04);
     while (!(rfm69_readreg(0x27) & 0x80)) { /* Wait until ready */ }
   }
 }
@@ -105,12 +109,16 @@ void rfm69_sendarray(uint8_t * data, uint8_t length) {
   rfm69_clearfifo(); /* Clear the FIFO */
   /* Now fill the FIFO. We manually set SS and use spi8 because this
    * is the only "register" that is larger than 8 bits. */
+  _delay_us(1);
   RFMPORT &= (uint8_t)~_BV(RFMPIN_SS);
+  _delay_us(1);
   rfm69_spi8(0x80); /* Select RegFifo (0x00) for writing (|0x80) */
   for (int i = 0; i < length; i++) {
     rfm69_spi8(data[i]);
   }
+  _delay_us(1);
   RFMPORT |= _BV(RFMPIN_SS);
+  _delay_us(1);
   /* FIFO has been filled. Tell the RFM69 to send by just turning on the transmitter. */
   rfm69_settransmitter(1);
   /* Wait for transmission to finish, visible in RegIrqFlags2. */
@@ -155,9 +163,8 @@ void rfm69_initport(void) {
 }
 
 void rfm69_initchip(void) {
-  /* RegOpMode -> standby. The jeelink sketch also set sequencer to forced,
-   * but that seems pointless, automatic should work too. */
-  rfm69_writereg(0x01, 0x00 | (0x03 << 2));
+  /* RegOpMode -> standby. */
+  rfm69_writereg(0x01, 0x00 | 0x04);
   /* RegDataModul -> PacketMode, FSK, Shaping 0 */
   rfm69_writereg(0x02, 0x00);
   /* RegFDevMsb / RegFDevLsb -> 0x05C3 (90 kHz). */
@@ -172,7 +179,9 @@ void rfm69_initchip(void) {
   rfm69_writereg(0x19, 0x42);
   /* RegDioMapping2 -> disable clkout (but thats the default anyways) */
   rfm69_writereg(0x26, 0x07);
-  rfm69_clearfifo(); /* this is reg 0x28 */
+  /* RegIrqFlags2 (0x28): some status flags, writing a 1 to FIFOOVERRUN bit
+   * clears the FIFO. This is what clearfifo() does. */
+  rfm69_clearfifo();
   /* RegRssiThresh -> 220 */
   rfm69_writereg(0x29, 220);
   /* RegPreambleMsb / Lsb - we want 3 bytes of preamble (0xAA) */
@@ -190,7 +199,7 @@ void rfm69_initchip(void) {
    * packet format", any other value "Fixed Length Packet Format" (with that
    * length). We set 0 for now, but actually fill the register before sending.
    */
-  rfm69_writereg(0x38, 0);
+  rfm69_writereg(0x38, 0x0c);
   /* RegFifoThreshold -> TxStartCond=1 value=0x0f */
   rfm69_writereg(0x3C, 0x8F);
   /* RegPacketConfig2 -> AesOn=0 and AutoRxRestart=1 even if we do not care about RX */

@@ -47,12 +47,13 @@
 #include "console.h"
 #include "Descriptors.h"
 #include <LUFA/Drivers/USB/USB.h>
+#include "../rfm69.h"
 
 
 #define INPUTBUFSIZE 30
 static uint8_t inputbuf[INPUTBUFSIZE];
 static uint8_t inputpos = 0;
-#define OUTPUTBUFSIZE 400
+#define OUTPUTBUFSIZE 800
 static uint8_t outputbuf[OUTPUTBUFSIZE];
 static uint16_t outputhead = 0; /* WARNING cannot be modified atomically */
 static uint16_t outputtail = 0;
@@ -236,7 +237,7 @@ static void console_inputchar(uint8_t inpb) {
   case 11 ... 12: /* Nonprinting characters. Ignore. */
   case 14 ... 26: /* Nonprinting characters. Ignore. */
   case 28 ... 31: /* Nonprinting characters. Ignore. */
-  case 0x7f ... 0xff: /* Nonprinting characters. Ignore. */
+  case 0x80 ... 0xff: /* Nonprinting characters. Ignore. */
           console_printhex8_noirq(inpb);
           appendchar(7); /* Bell */
           break;
@@ -246,12 +247,13 @@ static void console_inputchar(uint8_t inpb) {
   case 27: /* Escape */
           escstatus = 1;
           break;
+  case 0x7f: /* Weird backspace variant */
   case 8: /* Backspace */
           if (inputpos > 0) {
             inputpos--;
-            appendchar(inpb);
+            appendchar(8);
             appendchar(' ');
-            appendchar(inpb);
+            appendchar(8);
           }
           break;
   case '\r': /* 13 */
@@ -354,6 +356,29 @@ static void console_inputchar(uint8_t inpb) {
             } else {
               sprintf_P(tmpbuf, PSTR("%10lu"), geigcntavg60min);
               console_printtext_noirq(tmpbuf);
+            }
+          } else if (strncmp_P(inputbuf, PSTR("rfm69reg"), 8) == 0) {
+            uint8_t star = 0x01;
+            uint8_t endr = 0x4f;  /* Show all relevant ones by default */
+            int regtoshow = -1;
+            if (inputpos >= 10) {
+              sscanf(&inputbuf[9], "%d", &regtoshow);
+              regtoshow = regtoshow & 0x7f;
+            }
+            if (regtoshow > 0) {
+              star = regtoshow;
+              endr = regtoshow;
+            }
+            for (regtoshow = star; regtoshow <= endr; regtoshow++) {
+              if (star != endr) { /* if we show a range, skip reserved registers */
+                if (regtoshow == 0x0c) { continue; }
+                if ((regtoshow >= 0x14) && (regtoshow <= 0x17)) { continue; }
+              }
+              appendchar('0'); appendchar('x');
+              console_printhex8_noirq(regtoshow);
+              appendchar(':'); appendchar(' ');
+              console_printhex8_noirq(rfm69_readreg(regtoshow));
+              appendchar('\r'); appendchar('\n');
             }
           } else {
             console_printpgm_noirq_P(PSTR("Unknown command: "));
