@@ -170,8 +170,10 @@ void rfm69_initchip(void) {
   /* RegFDevMsb / RegFDevLsb -> 0x05C3 (90 kHz). */
   rfm69_writereg(0x05, 0x05);
   rfm69_writereg(0x06, 0xC3);
-  /* RegPaLevel -> Pa0=1 Pa1=0 Pa2=0 Outputpower=31 -> 13 dbM */
-  rfm69_writereg(0x11, 0x9F);
+  /* RegPaLevel -> Pa0=0 Pa1=1 Pa2=0 Outputpower=31 -> 13 dbM */
+  rfm69_writereg(0x11, 0x5F);
+  /* RegPaRamp -> 0x0c = 20us   default = 0x09 = 40us */
+  /* rfm69_writereg(0x12, 0x0c); */
   /* RegOcp -> defaults (jeelink-sketch sets 0 but that seems wrong) */
   rfm69_writereg(0x13, 0x1a);
   /* RegRxBw -> DccFreq 010   Mant 16   Exp 2 - this is a receiver-register,
