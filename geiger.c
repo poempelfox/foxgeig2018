@@ -9,7 +9,7 @@
 
 static uint8_t t3ovfcnt = 0;
 static uint16_t currentgeigcount = 0;
-static uint16_t ticks = 0;
+static volatile uint16_t ticks = 0;
 
 uint16_t geiger_valuehistory[SIZEOFGEIGERHISTORY];
 uint8_t geiger_historypos = 0;
@@ -121,3 +121,4 @@ void geiger_init(void)
   EICRA = (EICRA & 0x03) | _BV(ISC01);
   EIMSK |= _BV(INT0);
 }
+

@@ -63,7 +63,7 @@ static uint8_t calculatecrc(uint8_t * data, uint8_t len)
   return res;
 }
 
-/* Fill the frame to send with out collected data and a CRC.
+/* Fill the frame to send with our collected data and a CRC.
  * The protocol we use is that of a "CustomSensor" from the
  * FHEM LaCrosseItPlusReader sketch for the Jeelink.
  * So you'll just have to enable the support for CustomSensor in that sketch
@@ -135,6 +135,14 @@ int main(void)
    * is tristated on our side (it won't float, the RFM69 pulls it) */
   PORTE &= (uint8_t)~_BV(PE6);
   DDRE &= (uint8_t)~_BV(PE6);
+  /* Turn off unused stuff on the AVR via PRR registers */
+  /* We don't use TWI/I2C and Timer0/1 */
+  PRR0 |= _BV(PRTWI) | _BV(PRTIM0) | _BV(PRTIM1);
+  /* We don't use Timer4 and the USART. There seems to be a bug in
+   * avr-libc on Ubuntu 16.04, it doesn't define PRTIM4 but instead
+   * PRTIM2 for a nonexistant Timer2. Therefore we cannot use the
+   * macro and hardcode the correct value. */
+  PRR1 |= _BV(/* PRTIM4 */ 4) | _BV(PRUSART1);
 
   /* Prepare sleep mode */
   /* SLEEP_MODE_IDLE is the only sleepmode we can safely use. */
@@ -145,10 +153,10 @@ int main(void)
   sei();
 
   DDRC |= (uint8_t)_BV(PC7); /* PC7 is the LED pin, drive it */
+  PORTC &= (uint8_t)~_BV(PC7); /* Turn it off */
 
   while (1) {
     wdt_reset();
-    PORTC |= (uint8_t)_BV(PC7);
     curts = geiger_getticks();
     tsdiff = curts - lastts;
     if (tsdiff >= transmitinterval) {
@@ -179,7 +187,6 @@ int main(void)
       }
     }
     console_work();
-    PORTC &= (uint8_t)~_BV(PC7);
     if (!console_isusbconfigured()) {
       /* Don't go to sleep when USB is configured. Because then there is no
        * lack of power, and more importantly, we want the console to feel

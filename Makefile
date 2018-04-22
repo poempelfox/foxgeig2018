@@ -1,5 +1,5 @@
 # $Id: Makefile $
-# Makefile for Foxtemp2016
+# Makefile for Foxgeig2018
 
 CC	= avr-gcc
 OBJDUMP	= avr-objdump

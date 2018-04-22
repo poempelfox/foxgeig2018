@@ -1,5 +1,5 @@
 /* $Id: rfm69.c $
- * Functions for communication with RF12 module
+ * Functions for communication with RFM69 module
  *
  * This code was heavily copy+pasted from RFMxx.cpp in the FHEM LaCrosseIT+
  * Jeenode Firmware Code.
