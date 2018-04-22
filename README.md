@@ -3,7 +3,7 @@
 
 ## Introduction
 
-This is a geiger counter based on the [MightyOhm Geiger Counter](https://mightyohm.com/blog/products/geiger-counter/) kit. I've removed the original onboard microcontroller and instead used an Adafruit Feather 32U4 RFM69HCW, so that the measurements it makes can now be sent over the air (on 868 MHz). Because I did not want to connect it to the mains, the whole thing is solar powered. Energy is stored in a little LiPo battery, which could easily be connected because the Feather already has the necessary controller for that onboard. I've also constructed a laser-cut "case" made out of 3mm HDF (High-Density Fibreboard), although the term "case" might be a bit misleading here - it's not closed, but mostly a frame to hold the solar panel in place and the rest of the parts together.
+This is a geiger counter based on the [MightyOhm Geiger Counter](https://mightyohm.com/blog/products/geiger-counter/) kit. I've removed the original onboard microcontroller and instead used an Adafruit Feather 32U4 RFM69HCW, so that the measurements it makes can now be sent over the air (on 868 MHz). Because I did not want to connect it to the mains, the whole thing is solar powered. Energy is stored in a little LiPo battery, which could easily be connected because the Feather already has the necessary controller for that onboard. I've also constructed a laser-cut "case" made out of 3mm HDF (High-Density Fibreboard), although the term "case" might be a bit misleading here - it's not closed, but mostly a frame to hold the solar panel in place and the rest of the parts together. The radio-transmitted measurements are received by a [Jeelink V3](https://jeelabs.net/projects/hardware/wiki/JeeLink) and fed into [FHEM](https://fhem.de/).
 
 ## Part list
 
@@ -18,6 +18,7 @@ This is a geiger counter based on the [MightyOhm Geiger Counter](https://mightyo
 The biggest power eater is the MightyOhm, more specifically the circuit that generates the high voltage for the Geiger Tube. Before modification, I measured its power usage at U=3.0V:
 * with its onboard microcontroller:  7-8 mA avg, 15 mA peak
 * without its microcontroller: 6 mA avg, 6.7 mA peak
+
 It was therefore clear that it wasn't possible to power this from Goldcaps. Instead I bought a little Lithium Polymer battery to attach to the Adafruit Feather, which already comes prepared for that (it has a connector and all necessary electronics for charging onboard). For generating the power, I got a cheap "chinese" solar panel with USB output from Amazon. It claims to do 10W, but that value is probably more of a theoretic maximum. However, it does provide "enough" power (at least in the summer, winter hasn't been tested yet), and if there is enough sun it provides a nicely stable 5V USB power.
 
 ## Why?
